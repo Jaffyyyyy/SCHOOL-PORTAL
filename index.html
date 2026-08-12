@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mam-on ES | Education Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- MODERN CSS VARIABLES --- */
+        :root {
+            --primary-color: #0f172a;
+            --secondary-color: #4f46e5;
+            --secondary-hover: #4338ca;
+            --accent-color: #10b981;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --danger-color: #ef4444;
+            --sidebar-width: 280px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dark-mode {
+            --primary-color: #030712;
+            --secondary-color: #6366f1;
+            --secondary-hover: #4f46e5;
+            --accent-color: #34d399;
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; transition: var(--transition); }
+
+        /* --- LAYOUT & SIDEBAR --- */
+        #app-container { width: 100%; height: 100%; display: flex; }
+        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; transition: var(--transition); z-index: 20; }
+        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-header img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; margin-bottom: 12px; border: 2px solid rgba(255,255,255,0.2); }
+        .sidebar-header h3 { font-weight: 600; font-size: 1.1rem; letter-spacing: 0.5px; }
+        
+        .sidebar-menu { list-style: none; padding: 24px 0; flex: 1; }
+        .sidebar-menu li { padding: 14px 28px; cursor: pointer; display: flex; align-items: center; gap: 14px; color: #9ca3af; font-weight: 500; font-size: 0.95rem; border-left: 3px solid transparent; transition: var(--transition); }
+        .sidebar-menu li:hover { color: white; background: rgba(255,255,255,0.03); }
+        .sidebar-menu li.active { color: white; background: rgba(255,255,255,0.05); border-left-color: var(--secondary-color); }
+        .private-menu { display: none; } /* Hidden until logged in */
+
+        /* --- MAIN CONTENT --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .topbar { background-color: var(--card-bg); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); z-index: 10; }
+        .topbar-title { font-size: 1.25rem; font-weight: 600; }
+        
+        .user-actions { display: flex; gap: 12px; align-items: center; }
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: var(--transition); display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--secondary-color); color: white; }
+        .btn-primary:hover { background: var(--secondary-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-outline:hover { background: var(--bg-color); }
+        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
+        .btn-danger:hover { background: var(--danger-color); color: white; }
+
+        .content-area { flex: 1; padding: 32px; overflow-y: auto; scroll-behavior: smooth; }
+        .page-view { display: none; opacity: 0; transform: translateY(10px); transition: var(--transition); }
+        .page-view.active { display: block; opacity: 1; transform: translateY(0); }
+
+        /* --- WELCOME BANNER --- */
+        .welcome-banner { position: relative; width: 100%; height: 220px; border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 32px; box-shadow: var(--shadow-md); display: flex; align-items: center; padding: 40px; }
+        .welcome-banner img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; filter: brightness(0.6); transition: var(--transition); }
+        .banner-content { position: relative; z-index: 2; color: white; max-width: 600px; }
+        .banner-content h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .banner-content p { font-size: 1.1rem; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.5); margin-bottom: 16px; }
+        .edit-banner-btn { display: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); color: white; border: 1px solid rgba(255,255,255,0.4); }
+        .edit-banner-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* --- DASHBOARD CARDS --- */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+        .kpi-card { background: var(--card-bg); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; transition: var(--transition); }
+        .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .kpi-card h3 { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .kpi-card .value { font-size: 2.2rem; font-weight: 700; color: var(--text-main); }
+        
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .chart-container { background: var(--card-bg); padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+        .chart-title { font-size: 1rem; font-weight: 600; margin-bottom: 20px; color: var(--text-main); }
+
+        /* --- DATA TABLES --- */
+        .table-container { background: var(--card-bg); border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); overflow: hidden; }
+        .table-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 16px 24px; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+        th { background: rgba(0,0,0,0.01); color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr:hover { background: rgba(0,0,0,0.01); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--accent-color); }
+
+        /* --- MODALS & FORMS --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 3000; opacity: 0; transition: opacity 0.3s; }
+        .modal-card { background: var(--card-bg); padding: 32px; border-radius: var(--radius-lg); width: 400px; max-width: 90%; box-shadow: var(--shadow-lg); transform: scale(0.95); transition: transform 0.3s; }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-overlay.show .modal-card { transform: scale(1); }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-header h2 { font-size: 1.25rem; font-weight: 600; }
+        .close-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; }
+        
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+        .input-group input, .input-group textarea {
+            width: 100%; padding: 12px 16px; border: 1.5px solid var(--border-color); border-radius: 8px;
+            background: var(--bg-color); color: var(--text-main); font-size: 1rem; transition: var(--transition); outline: none;
+        }
+        .input-group input:focus, .input-group textarea:focus { border-color: var(--secondary-color); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+        .btn-submit { width: 100%; padding: 12px; background: var(--secondary-color); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: var(--transition); }
+        .btn-submit:hover { background: var(--secondary-hover); }
+        .error-msg { color: var(--danger-color); font-size: 0.85rem; text-align: center; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- MAIN APP -->
+    <div id="app-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="https://ui-avatars.com/api/?name=Mam+On&background=4f46e5&color=fff" id="displayLogo" alt="School Logo">
+                <h3 id="displaySchoolName">Mam-on ES</h3>
+                <p id="userRoleDisplay" style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px; font-weight: 500;">Public View</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active" onclick="navigate('dashboard')"><i class="fas fa-border-all"></i> Overview</li>
+                <li onclick="navigate('teachers')" id="menu-teachers" class="private-menu"><i class="fas fa-user-friends"></i> Staff Directory</li>
+                <li onclick="navigate('submissions')" id="menu-submissions" class="private-menu"><i class="fas fa-file-alt"></i> MPS Submissions</li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-title" id="pageTitle">Overview Dashboard</div>
+                <div class="user-actions">
+                    <!-- Shown when NOT logged in -->
+                    <button class="btn btn-primary" id="btnLoginNav" onclick="openModal('loginModal')"><i class="fas fa-sign-in-alt"></i> Login</button>
+                    <!-- Shown when logged in -->
+                    <button class="btn btn-outline private-menu" onclick="openModal('pinModal')"><i class="fas fa-key"></i> Change PIN</button>
+                    <button class="btn btn-outline" onclick="openModal('settingsModal')"><i class="fas fa-sliders-h"></i> Settings</button>
+                    <button class="btn btn-danger private-menu" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                
+                <!-- DASHBOARD PAGE -->
+                <div id="page-dashboard" class="page-view active">
+                    
+                    <!-- CUSTOMIZABLE WELCOME BANNER -->
+                    <div class="welcome-banner">
+                        <img src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2000&auto=format&fit=crop" id="bannerImg" alt="School Banner">
+                        <div class="banner-content">
+                            <h1 id="bannerTitle">Welcome to Mam-on ES Dashboard</h1>
+                            <p id="bannerSubtext">Empowering our educators and tracking student success in real-time.</p>
+                            <button class="btn edit-banner-btn" id="editBannerBtn" onclick="openModal('editBannerModal')">
+                                <i class="fas fa-pencil-alt"></i> Edit Banner Design
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KPIs -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <h3>Schoolwide MPS</h3>
+                            <div class="value">64.13%</div>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Top Subject</h3>
+                            <div class="value" style="color: var(--secondary-color);">Makabansa</div>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Focus Area</h3>
+                            <div class="value" style="color: var(--danger-color);">Mathematics</div>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Active Personnel</h3>
+                            <div class="value" id="totalStaffCount">5</div>
+                        </div>
+                    </div>
+                    
+                    <!-- CHARTS -->
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">Subject Performance Analysis</div>
+                            <canvas id="barChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-title">Mastery Distribution</div>
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STAFF DIRECTORY PAGE -->
+                <div id="page-teachers" class="page-view">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <div class="chart-title" style="margin:0;">Personnel Database</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Username</th>
+                                    <th>Position / Role</th>
+                                    <th>Item Number</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacherTableBody">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SUBMISSIONS PAGE -->
+                <div id="page-submissions" class="page-view">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <div class="chart-title" style="margin:0;">MPS Report Audit Logs</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Grade/Section</th>
+                                    <th>Adviser</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Grade 1 - Sampaguita</td>
+                                    <td>Jenny Queen Orillaneda</td>
+                                    <td><span class="badge badge-success">Completed</span></td>
+                                    <td>Aug 13, 2026</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Staff Login</h2>
+                <button class="close-btn" onclick="closeModal('loginModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem; text-align: center;">Sign in to access your administrative tools</p>
+            <form onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <label>Username (Last Name)</label>
+                    <input type="text" id="usernameInput" placeholder="e.g., campado" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>PIN Code</label>
+                    <input type="password" id="pinInput" placeholder="•••••••••" required>
+                </div>
+                <button type="submit" class="btn-submit">Sign In</button>
+                <div id="loginError" class="error-msg">Invalid Username or PIN. Please try again.</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Banner Modal -->
+    <div class="modal-overlay" id="editBannerModal">
+        <div class="modal-card" style="width: 500px;">
+            <div class="modal-header">
+                <h2>Edit Welcome Banner</h2>
+                <button class="close-btn" onclick="closeModal('editBannerModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="saveBanner(event)">
+                <div class="input-group">
+                    <label>Upload Background Photo</label>
+                    <input type="file" id="bannerImageInput" accept="image/*" style="padding: 8px;">
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Leave blank to keep current photo.</p>
+                </div>
+                <div class="input-group">
+                    <label>Welcome Title</label>
+                    <input type="text" id="editBannerTitle" required>
+                </div>
+                <div class="input-group">
+                    <label>Subtitle / Message</label>
+                    <textarea id="editBannerSubtext" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change PIN Modal -->
+    <div class="modal-overlay" id="pinModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Change Security PIN</h2>
+                <button class="close-btn" onclick="closeModal('pinModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="handlePinChange(event)">
+                <div class="input-group"><label>Current PIN</label><input type="password" id="currentPin" required></div>
+                <div class="input-group"><label>New PIN</label><input type="password" id="newPin" required></div>
+                <button type="submit" class="btn-submit">Update PIN</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Portal Preferences</h2>
+                <button class="close-btn" onclick="closeModal('settingsModal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="input-group">
+                <button class="btn btn-outline" style="width:100%; justify-content:center;" onclick="toggleDarkMode()">
+                    <i class="fas fa-adjust"></i> Toggle Dark/Light Mode
+                </button>
+            </div>
+            <div class="input-group">
+                <label>Primary Brand Color</label>
+                <input type="color" style="height: 45px; padding: 2px;" value="#4f46e5" oninput="updateColor('--secondary-color', this.value)">
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATABASE ---
+        const usersDB = [
+            { name: "Jasper Singcol Campado", username: "campado", pin: "123456789", role: "Principal", pos: "Principal I", item: "OSEC-DECSB-PRIN-1011122", status: "Permanent" },
+            { name: "Eric Portillo Palingcod", username: "palingcod", pin: "123456789", role: "Teacher", pos: "Teacher III", item: "OSEC-DECSB-TCH3-1022466-1998", status: "Permanent" },
+            { name: "Jenny Queen Orillaneda", username: "orillaneda", pin: "123456789", role: "Teacher", pos: "Teacher I", item: "OSEC-DECSB-TCH1-1020301", status: "Permanent" },
+            { name: "Jessa Mae Flores", username: "flores", pin: "123456789", role: "Teacher", pos: "Teacher I", item: "OSEC-DECSB-TCH1-1040589", status: "Permanent" },
+            { name: "Shienna Myville Curada", username: "curada", pin: "123456789", role: "Teacher", pos: "Teacher I", item: "OSEC-DECSB-TCHI-1021987", status: "Permanent" }
+        ];
+
+        let currentUser = null;
+        let barChartInst = null;
+        let pieChartInst = null;
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            loadBannerData(); // Load saved custom banner
+            initCharts();
+            renderTable();
+        };
+
+        // --- AUTHENTICATION ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const un = document.getElementById('usernameInput').value.toLowerCase().trim();
+            const pin = document.getElementById('pinInput').value;
+            const errorMsg = document.getElementById('loginError');
+            const user = usersDB.find(u => u.username === un && u.pin === pin);
+
+            if (user) {
+                currentUser = user;
+                errorMsg.style.display = 'none';
+                closeModal('loginModal');
+                
+                // Update UI for logged-in state
+                document.getElementById('userRoleDisplay').innerText = `${currentUser.name} | ${currentUser.role}`;
+                document.getElementById('userRoleDisplay').style.color = 'white';
+                document.getElementById('btnLoginNav').style.display = 'none';
+                
+                // Show private menus
+                document.querySelectorAll('.private-menu').forEach(el => el.style.display = 'flex');
+                
+                // Role Based Logic
+                if (currentUser.role === 'Teacher') {
+                    document.getElementById('menu-teachers').style.display = 'none';
+                    document.getElementById('editBannerBtn').style.display = 'none'; // Only Admin/Principal can edit
+                } else {
+                    document.getElementById('editBannerBtn').style.display = 'inline-flex';
+                }
+
+                navigate('dashboard');
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('pinInput').value = '';
+            
+            // Revert UI to Public View
+            document.getElementById('userRoleDisplay').innerText = `Public View`;
+            document.getElementById('userRoleDisplay').style.color = '#9ca3af';
+            document.getElementById('btnLoginNav').style.display = 'inline-flex';
+            document.getElementById('editBannerBtn').style.display = 'none';
+            
+            document.querySelectorAll('.private-menu').forEach(el => el.style.display = 'none');
+            navigate('dashboard');
+        }
+
+        // --- BANNER CUSTOMIZATION ---
+        function loadBannerData() {
+            const savedData = localStorage.getItem('mamOnBanner');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                document.getElementById('bannerTitle').innerText = data.title;
+                document.getElementById('bannerSubtext').innerText = data.subtext;
+                if (data.image) {
+                    document.getElementById('bannerImg').src = data.image;
+                }
+                
+                // Pre-fill edit modal
+                document.getElementById('editBannerTitle').value = data.title;
+                document.getElementById('editBannerSubtext').value = data.subtext;
+            } else {
+                // Default pre-fill
+                document.getElementById('editBannerTitle').value = "Welcome to Mam-on ES Dashboard";
+                document.getElementById('editBannerSubtext').value = "Empowering our educators and tracking student success in real-time.";
+            }
+        }
+
+        function saveBanner(e) {
+            e.preventDefault();
+            const title = document.getElementById('editBannerTitle').value;
+            const subtext = document.getElementById('editBannerSubtext').value;
+            const fileInput = document.getElementById('bannerImageInput');
+            
+            document.getElementById('bannerTitle').innerText = title;
+            document.getElementById('bannerSubtext').innerText = subtext;
+
+            const updateStorage = (imgBase64) => {
+                const data = { title, subtext, image: imgBase64 };
+                localStorage.setItem('mamOnBanner', JSON.stringify(data));
+                closeModal('editBannerModal');
+            };
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    document.getElementById('bannerImg').src = event.target.result;
+                    updateStorage(event.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                // Save without changing image
+                const existingData = JSON.parse(localStorage.getItem('mamOnBanner')) || {};
+                updateStorage(existingData.image || null);
+            }
+        }
+
+        // --- PIN MANAGEMENT ---
+        function handlePinChange(e) {
+            e.preventDefault();
+            const curr = document.getElementById('currentPin').value;
+            const newP = document.getElementById('newPin').value;
+            if (curr !== currentUser.pin) { alert("Current PIN is incorrect!"); return; }
+            if (newP.length < 4) { alert("New PIN must be at least 4 characters."); return; }
+            const userIndex = usersDB.findIndex(u => u.username === currentUser.username);
+            usersDB[userIndex].pin = newP;
+            currentUser.pin = newP;
+            alert("PIN Successfully Updated!");
+            closeModal('pinModal');
+            e.target.reset();
+        }
+
+        // --- UI & NAVIGATION ---
+        function navigate(pageId) {
+            document.querySelectorAll('.sidebar-menu li').forEach(m => m.classList.remove('active'));
+            if(event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                document.querySelector('.sidebar-menu li:first-child').classList.add('active');
+            }
+            
+            document.querySelectorAll('.page-view').forEach(p => { p.classList.remove('active'); p.style.opacity = '0'; });
+            const target = document.getElementById(`page-${pageId}`);
+            target.classList.add('active');
+            setTimeout(() => target.style.opacity = '1', 50);
+            
+            const titles = { 'dashboard': 'Overview Dashboard', 'teachers': 'Staff Directory', 'submissions': 'MPS Report Audit Logs' };
+            document.getElementById('pageTitle').innerText = titles[pageId];
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('teacherTableBody');
+            tbody.innerHTML = '';
+            usersDB.forEach(t => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 500; color: var(--text-main);">${t.name}</td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">@${t.username}</td>
+                        <td>${t.pos}</td>
+                        <td style="font-family: monospace; font-size: 0.85rem;">${t.item}</td>
+                        <td><span class="badge badge-success">${t.status}</span></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('totalStaffCount').innerText = usersDB.length;
+        }
+
+        // --- MODALS & THEMES ---
+        function openModal(id) { document.getElementById(id).classList.add('show'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+        window.onclick = e => { if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('show'); }
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); initCharts(); }
+        function updateColor(variable, value) { document.documentElement.style.setProperty(variable, value); }
+
+        // --- CHARTS ---
+        function initCharts() {
+            if(barChartInst) barChartInst.destroy();
+            if(pieChartInst) pieChartInst.destroy();
+            const isDark = document.body.classList.contains('dark-mode');
+            const textColor = isDark ? '#9ca3af' : '#6b7280';
+            const gridColor = isDark ? '#374151' : '#e5e7eb';
+            Chart.defaults.color = textColor;
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            barChartInst = new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Makabansa', 'Reading', 'GMRC', 'Language', 'Math'],
+                    datasets: [{ label: 'MPS (%)', data: [74.3, 66.6, 61.6, 59.3, 58.6], backgroundColor: '#4f46e5', borderRadius: 6 }]
+                },
+                options: { scales: { y: { beginAtZero: true, max: 100, grid: { color: gridColor } }, x: { grid: { display: false } } } }
+            });
+
+            pieChartInst = new Chart(document.getElementById('doughnutChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Highly Proficient', 'Proficient', 'Nearly', 'Not Proficient'],
+                    datasets: [{ data: [26, 11, 11, 52], backgroundColor: ['#10b981', '#4f46e5', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+                },
+                options: { cutout: '75%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+    </script>
+</body>
+</html>
