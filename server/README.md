@@ -1,20 +1,29 @@
-# School Portal Server
+# Server changes
 
-This simple Node/Express server uses SQLite to store Students, Tests, and Scores, and exposes APIs for:
-- Admin authentication (simple JWT)
-- Upload LIS CSV (students)
-- Upload Test results CSV
-- Search students
-- Dashboard summary and grade consolidation
+I updated the server to support role-based users, teacher report uploads, and a backup endpoint.
 
-Run locally
+Important notes:
+- A seeded admin user is created on first run using environment variables:
+  - ADMIN_USERNAME (default: jasper)
+  - ADMIN_PASSWORD (default: ChangeMe!123)
+  - ADMIN_EMAIL (default: jasper@example.com)
+  - ADMIN_FULLNAME (default: Jasper S. Campado)
+  - ADMIN_POSITION (default: Admin Officer-II)
+
+- New endpoints:
+  - GET /api/users (admin only)
+  - POST /api/users (admin only)
+  - PATCH /api/users/:id (admin only)
+  - POST /api/users/:id/reset-password (admin only)
+  - POST /api/upload/report (teacher or admin)
+  - POST /api/admin/backup (admin only) => creates a ZIP of CSV exports and returns it for download
+
+- The database schema was extended. On first run the server creates new tables and adds missing columns to existing tables where possible.
+
+Run locally:
 1. cd server
-2. copy .env.example to .env and edit ADMIN_PASSWORD if desired
+2. copy .env.example to .env and set ADMIN_PASSWORD if desired
 3. npm install
 4. npm start
 
-Docker
-- You can dockerize the server; instructions omitted here but straightforward.
-
-Notes
-- This is a minimal starter backend for the static dashboard. It uses JWTs and a seeded admin user. In production, replace with a proper auth provider and HTTPS.
+Backups are saved under /backups in the repo root and will be offered for download when created via the API.
