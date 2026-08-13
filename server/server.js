@@ -20,6 +20,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'jasper@example.com';
 const ADMIN_FULLNAME = process.env.ADMIN_FULLNAME || 'Jasper S. Campado';
 const ADMIN_POSITION = process.env.ADMIN_POSITION || 'Admin Officer-II';
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
+const DEFAULT_USER_PASSWORD = process.env.DEFAULT_USER_PASSWORD || 'ChangeMe!123';
 
 // ensure admin user exists (seed Jasper as system creator)
 (function ensureAdmin(){
@@ -84,15 +85,42 @@ app.get('/api/users', authMiddleware, requireRole('admin'), (req,res)=>{
 });
 
 app.post('/api/users', authMiddleware, requireRole('admin'), (req,res)=>{
-  const {username,email,password,first_name,last_name,role,position} = req.body;
-  if(!username || !email || !password) return res.status(400).json({error:'username,email,password required'});
-  const hash = bcrypt.hashSync(password, 10);
+  // Create user: If email not provided, auto-generate using Firstname.Lastname@deped.gov.ph
+  // Password: if not provided, use DEFAULT_USER_PASSWORD
+  const {username, email, password, first_name, last_name, role, position} = req.body;
+  if(!username || !first_name || !last_name) return res.status(400).json({error:'username, first_name, last_name required'});
+
+  // generate or validate email
+  let userEmail = email && typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
+  function normalizeNamePart(s){ return s.toString().trim().toLowerCase().replace(/\s+/g,'.').replace(/[^a-z0-9.\-]/g,''); }
+  if(!userEmail){
+    const local = `${normalizeNamePart(first_name)}.${normalizeNamePart(last_name)}`;
+    userEmail = `${local}@deped.gov.ph`;
+  }else{
+    // ensure deped.gov.ph domain
+    if(!userEmail.endsWith('@deped.gov.ph')){
+      return res.status(400).json({error:'email must be a deped.gov.ph address'});
+    }
+  }
+
+  // ensure unique email — append numeric suffix if needed
+  let uniqueEmail = userEmail;
+  let suffix = 1;
+  while(db.prepare('SELECT id FROM users WHERE email = ?').get(uniqueEmail)){
+    uniqueEmail = userEmail.replace('@deped.gov.ph', `.${suffix}@deped.gov.ph`);
+    suffix++; if(suffix>1000) break;
+  }
+  userEmail = uniqueEmail;
+
+  const pwd = password || DEFAULT_USER_PASSWORD;
+  const hash = bcrypt.hashSync(pwd, 10);
   try{
-    const info = db.prepare('INSERT INTO users (username,email,password_hash,first_name,last_name,role,position,created_by) VALUES (?,?,?,?,?,?,?,?)').run(username,email,hash,first_name,last_name,role||'teacher',position||'', req.user.id);
+    const info = db.prepare('INSERT INTO users (username,email,password_hash,first_name,last_name,role,position,created_by) VALUES (?,?,?,?,?,?,?,?)').run(username,userEmail,hash,first_name,last_name,role||'teacher',position||'', req.user.id);
     const id = info.lastInsertRowid;
     const user = db.prepare('SELECT id,username,email,first_name,last_name,role,position,disabled FROM users WHERE id = ?').get(id);
     db.prepare('INSERT INTO audit_logs (user_id,action,target_type,target_id,metadata) VALUES (?,?,?,?,?)').run(req.user.id,'create_user','user',id,JSON.stringify({by:req.user.username}));
-    res.json({user});
+    // return the temp password so admin can pass it to the new user
+    res.json({user, tempPassword: pwd});
   }catch(e){ res.status(500).json({error:'create failed',details:e.message}); }
 });
 
